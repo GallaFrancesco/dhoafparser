@@ -1,0 +1,6 @@
+name "dhoafparser"
+description "D parser for the Hanoi-Omega Automata Format"
+authors "fra"
+copyright "Copyright © 2020, fra"
+license "GPLv3"
+dependency "pegged" version="~>0.4.4"
