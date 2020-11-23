@@ -1,4 +1,5 @@
 import parser.hoa;
+import parser.loader;
 
 import std.stdio;
 import std.file;
@@ -24,6 +25,14 @@ int main(immutable string[] args)
     (pt.successful) ?
         writeln(args[1]~": is a valid Hanoi-Omega automaton.") :
         writeln(args[1]~": is NOT a valid Hanoi-Omega automaton.");
+
+    // generate an immutable HOA struct
+    immutable hoa = immutableHOA!hoaLoader;
+    // hoa.nAP = 0; // should fail
+    writeln(hoa.nStates);
+    writeln(hoa.startSet);
+    writeln(hoa.nAP);
+
 
     return !pt.successful;
 }

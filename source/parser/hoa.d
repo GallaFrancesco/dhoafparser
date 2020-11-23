@@ -1,8 +1,48 @@
 module parser.hoa;
 
-import pegged.grammar;
+import parser.loader;
 
-mixin(grammar(`
+import pegged.grammar;
+import std.conv : to;
+import std.stdio;
+
+/**
+ * Semantic actions
+ */
+ParseTree nStates(alias hoaLoader)(ParseTree p) @safe
+{
+    assert(p.matches.length == 1);
+    hoaLoader.nStates = to!uint(p.matches[0]);
+    return p;
+}
+
+ParseTree start(alias hoaLoader)(ParseTree p) @safe
+{
+    assert(p.matches.length == 1);
+    hoaLoader.start(to!uint(p.matches[0]));
+    return p;
+}
+
+
+ParseTree nAP(alias hoaLoader)(ParseTree p) @safe
+{
+    assert(p.matches.length == 1);
+    hoaLoader.nAP = to!uint(p.matches[0]);
+    return p;
+}
+
+ParseTree iHOA(alias hoaLoader)(ParseTree p) @safe
+{
+    hoa = immutableHOA!hoaLoader;
+    return p;
+}
+
+/**
+ * Grammar definition
+ */
+mixin(grammar(HOAGrammar));
+
+immutable string HOAGrammar = `
 
 HOAFormat:
 
@@ -14,9 +54,9 @@ HOAFormat:
 
     formatVersion  < "HOA:" IDENTIFIER endOfLine*
     
-    headerItem     < "States:" INT endOfLine*
-                    / "Start:" stateConj endOfLine*
-                    / "AP:" INT STRING* endOfLine*
+    headerItem     < "States:" INT { nStates!hoaLoader } endOfLine* 
+                    / "Start:" startConj endOfLine* 
+                    / "AP:" APList endOfLine*  
                     / "Alias:" ANAME labelExpr endOfLine*
                     / "Acceptance:" INT acceptanceCond endOfLine*
                     / "acc-name:" IDENTIFIER ( BOOLEAN / INT / IDENTIFIER )* endOfLine*
@@ -32,7 +72,10 @@ HOAFormat:
     accSig         < "{" INT* "}"
 
     label          < "[" labelExpr "]"
-    
+
+    APList         <  INT { nAP!hoaLoader } STRING*
+
+    startConj      <~ INT { start!hoaLoader } / startConj "&" INT { start!hoaLoader }
 
     stateConj      <~ INT / stateConj "&" INT
 
@@ -83,4 +126,4 @@ HOAFormat:
 
     Spacing        <- (space / COMMENT)*
 
-`));
+`;
