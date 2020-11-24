@@ -31,9 +31,39 @@ ParseTree nAP(alias hoaLoader)(ParseTree p) @safe
     return p;
 }
 
-ParseTree iHOA(alias hoaLoader)(ParseTree p) @safe
+ParseTree currentState(alias hoaLoader)(ParseTree p) @safe
 {
-    hoa = immutableHOA!hoaLoader;
+    assert(p.matches.length == 1);
+    writeln("currentState " ~ to!string(p.matches[0]));
+    hoaLoader.currentState = State(to!uint(p.matches[0]));
+    return p;
+}
+
+ParseTree currentEdgeLabel(alias hoaLoader)(ParseTree p) @safe
+{
+    hoaLoader.currentEdge.label = to!string(p.matches);
+    return p;
+}
+
+ParseTree edgeFinalState(alias hoaLoader)(ParseTree p) @safe
+{
+    assert(p.matches.length == 1);
+    hoaLoader.currentEdge.end = State(to!uint(p.matches[0]));
+    return p;
+}
+
+ParseTree accSet(alias hoaLoader)(ParseTree p) @safe
+{
+    assert(p.matches.length == 1);
+    writeln("accSet " ~ to!string(p.matches[0]));
+    () @trusted { writeln(p); } ();
+    hoaLoader.accSet(to!uint(p.matches[0]));
+    return p;
+}
+
+ParseTree addEdge(alias hoaLoader)(ParseTree p) @safe
+{
+    hoaLoader.addEdge();
     return p;
 }
 
@@ -65,19 +95,19 @@ HOAFormat:
                     / "properties:" IDENTIFIER* endOfLine*
                     / HEADERNAME ( BOOLEAN / INT / STRING / IDENTIFIER )* endOfLine*
 
-    stateName      < "State:" label? INT STRING? accSig? endOfLine*
+    stateName      <  "State:" label? INT { currentState!hoaLoader } STRING? accSig? endOfLine*
 
-    edge           < label? stateConj accSig? endOfLine*
+    edge           <  label endState { (p) { writeln(p); return p; }} accSig? { addEdge!hoaLoader } endOfLine* 
     
-    accSig         < "{" INT* "}"
+    label          <  "[" labelExpr { currentEdgeLabel!hoaLoader } "]"
 
-    label          < "[" labelExpr "]"
+    endState       <  INT { edgeFinalState!hoaLoader }
+
+    accSig         <- "{" ( INT { accSet!hoaLoader } space )+ "}"
 
     APList         <  INT { nAP!hoaLoader } STRING*
 
     startConj      <~ INT { start!hoaLoader } / startConj "&" INT { start!hoaLoader }
-
-    stateConj      <~ INT / stateConj "&" INT
 
     labelExpr      < "!" labelExpr
                     / "(" labelExpr ")"

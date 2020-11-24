@@ -32,6 +32,8 @@ int main(immutable string[] args)
     writeln(hoa.nStates);
     writeln(hoa.startSet);
     writeln(hoa.nAP);
+    writeln(hoa.currentState);
+    writeln(hoa.edges);
 
 
     return !pt.successful;

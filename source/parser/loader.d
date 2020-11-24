@@ -30,12 +30,21 @@ HOALoader hoaLoader;
 
 struct State {
     uint id;
+    alias id this;
 }
 
 struct Edge {
     State start;
     State end;
     string label;
+    immutable(State[]) accSetBuf;
+
+    this(immutable State s, immutable State e, immutable string l, immutable(State[]) ab) @safe {
+        start = s;
+        end = e;
+        label = l;
+        accSetBuf = ab;
+    }
 }
 
 struct HOALoader {
@@ -45,16 +54,24 @@ struct HOALoader {
         Appender!(immutable(State[])) stateBuf;
         Appender!(immutable(Edge[])) edgeBuf;
         Appender!(immutable(State[])) startBuf;
-        Appender!(immutable(State[])) accStateBuf;
+        Appender!(uint[]) accSetBuf;
     }
 
     // TODO support extra headers & ALIAS
     string name;
+    State currentState;
+    Edge currentEdge;
     uint nStates;
     uint nAP;
     uint nAccSets;
     string acceptanceString;
     string toolString;
+
+    void addEdge() @safe
+    {
+        edgeBuf.put(currentEdge);
+        accSetBuf.clear();
+    }
 
     void atomicProposition(immutable string aprop) @safe {
         APbuf.put(aprop);
@@ -80,7 +97,10 @@ struct HOALoader {
         return stateBuf.data();
     }
 
-    void start(immutable uint id) @safe {
+    void start(immutable uint id) @safe { // TODO ugly solution but startBuf is supposed to be small
+        foreach(State s; startBuf.data()) {
+            if(s.id == id) return;
+        }
         startBuf.put(State(id));
     }
 
@@ -88,16 +108,12 @@ struct HOALoader {
         return startBuf.data();
     }
 
-    void accState(immutable uint id) @safe {
-        accStateBuf.put(State(id));
+    void accSet(immutable uint id) @safe {
+        accSetBuf.put(id);
     }
 
-    immutable(State[]) accStates() immutable @safe {
-        return accStateBuf.data();
-    }
-
-    void edge(immutable State start, immutable State end, immutable string label) @safe {
-        edgeBuf.put(Edge(start,end,label));
+    immutable(uint[]) accSets() immutable @safe {
+        return accSetBuf.data();
     }
 
     immutable(Edge[]) edges() immutable @safe {
