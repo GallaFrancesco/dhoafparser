@@ -12,6 +12,7 @@ template immutableHOA(alias h)
 {
     auto immutableHOA() {
         immutable hoa = HOA(h);
+        destroy(h);
         return hoa;
     }
 }
@@ -25,8 +26,7 @@ struct HOA {
 /**
  * HOA data structs.
  */
-
-HOALoader hoaLoader;
+HOALoader hoaLoader; // TODO global == ugly, fix
 
 struct State {
     uint id;
@@ -37,13 +37,31 @@ struct Edge {
     State start;
     State end;
     string label;
-    immutable(State[]) accSetBuf;
+    private uint[] _accSets;
 
-    this(immutable State s, immutable State e, immutable string l, immutable(State[]) ab) @safe {
-        start = s;
-        end = e;
-        label = l;
-        accSetBuf = ab;
+    void addAccSets(uint[] as) @safe
+    {
+        _accSets = as;
+    }
+
+    immutable(uint[]) accSets() inout @safe
+    {
+        return _accSets.idup();
+    }
+
+    void dump() inout @safe
+    {
+        import std.stdio;
+        string asb;
+        if(accSets.length > 0) {
+            asb = " {";
+            foreach(as; accSets) {
+                asb ~= to!string(as) ~ ", ";
+            }
+            asb ~= "\b\b";
+            asb ~= "}";
+        }
+        writeln(to!string(start.id) ~ "->" ~ to!string(end.id) ~ " " ~ label ~ " " ~asb);
     }
 }
 
@@ -59,19 +77,12 @@ struct HOALoader {
 
     // TODO support extra headers & ALIAS
     string name;
-    State currentState;
     Edge currentEdge;
     uint nStates;
     uint nAP;
     uint nAccSets;
     string acceptanceString;
     string toolString;
-
-    void addEdge() @safe
-    {
-        edgeBuf.put(currentEdge);
-        accSetBuf.clear();
-    }
 
     void atomicProposition(immutable string aprop) @safe {
         APbuf.put(aprop);
@@ -108,15 +119,22 @@ struct HOALoader {
         return startBuf.data();
     }
 
-    void accSet(immutable uint id) @safe {
+    immutable(Edge[]) edges() immutable @safe {
+        return edgeBuf.data();
+    }
+
+    /**
+     * Edge-building utilities
+     */
+    void accSet(immutable uint id) @safe
+    {
         accSetBuf.put(id);
     }
 
-    immutable(uint[]) accSets() immutable @safe {
-        return accSetBuf.data();
-    }
-
-    immutable(Edge[]) edges() immutable @safe {
-        return edgeBuf.data();
+    void addEdge() @safe
+    {
+        currentEdge.addAccSets(accSetBuf.data.dup());
+        edgeBuf.put(currentEdge);
+        accSetBuf.clear();
     }
 }

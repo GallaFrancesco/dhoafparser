@@ -5,6 +5,7 @@ import std.stdio;
 import std.file;
 import std.range;
 import std.algorithm.searching;
+import std.conv : to;
 
 int main(immutable string[] args)
 {
@@ -29,11 +30,13 @@ int main(immutable string[] args)
     // generate an immutable HOA struct
     immutable hoa = immutableHOA!hoaLoader;
     // hoa.nAP = 0; // should fail
-    writeln(hoa.nStates);
-    writeln(hoa.startSet);
-    writeln(hoa.nAP);
-    writeln(hoa.currentState);
-    writeln(hoa.edges);
+    writeln("--- DUMP ---");
+    writeln("N. of states: "~to!string(hoa.nStates));
+    writeln("N. of atomic propositions: "~to!string(hoa.nAP));
+    writeln("Initial state list: "~to!string(hoa.startSet));
+    writeln("Edge list (FORMAT from -> to [label] {accepting sets})");
+    foreach(edge; hoa.edges) edge.dump();
+    writeln("--- END ---");
 
 
     return !pt.successful;

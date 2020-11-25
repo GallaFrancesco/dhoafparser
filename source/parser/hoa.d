@@ -34,8 +34,7 @@ ParseTree nAP(alias hoaLoader)(ParseTree p) @safe
 ParseTree currentState(alias hoaLoader)(ParseTree p) @safe
 {
     assert(p.matches.length == 1);
-    writeln("currentState " ~ to!string(p.matches[0]));
-    hoaLoader.currentState = State(to!uint(p.matches[0]));
+    hoaLoader.currentEdge.start = State(to!uint(p.matches[0]));
     return p;
 }
 
@@ -55,8 +54,6 @@ ParseTree edgeFinalState(alias hoaLoader)(ParseTree p) @safe
 ParseTree accSet(alias hoaLoader)(ParseTree p) @safe
 {
     assert(p.matches.length == 1);
-    writeln("accSet " ~ to!string(p.matches[0]));
-    () @trusted { writeln(p); } ();
     hoaLoader.accSet(to!uint(p.matches[0]));
     return p;
 }
@@ -80,7 +77,7 @@ HOAFormat:
 
     header         < formatVersion headerItem*
 
-    body           < (stateName edge*)+
+    body           <- (stateName edge*)+
 
     formatVersion  < "HOA:" IDENTIFIER endOfLine*
     
@@ -97,13 +94,13 @@ HOAFormat:
 
     stateName      <  "State:" label? INT { currentState!hoaLoader } STRING? accSig? endOfLine*
 
-    edge           <  label endState { (p) { writeln(p); return p; }} accSig? { addEdge!hoaLoader } endOfLine* 
-    
+    edge           <  label endState accSig? { addEdge!hoaLoader } endOfLine*
+
     label          <  "[" labelExpr { currentEdgeLabel!hoaLoader } "]"
 
     endState       <  INT { edgeFinalState!hoaLoader }
 
-    accSig         <- "{" ( INT { accSet!hoaLoader } space )+ "}"
+    accSig         < "{" ( !"}" INT { accSet!hoaLoader } )+ "}"
 
     APList         <  INT { nAP!hoaLoader } STRING*
 
