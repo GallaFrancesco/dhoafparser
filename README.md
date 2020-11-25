@@ -9,9 +9,7 @@ reads a file containing the HOA representation of an automaton. The
 program validates the file and optionally prints the whole parse tree.
 
 The final design of this parser is to be built as a library which
-allows for automata inspection and provides a similar API as the one
-of the [cpphoafparser](https://automata.tools/hoa/cpphoafparser/)
-library.
+allows for automata inspection providing an `immutable HOA` data structure.
 
 ## Building and Usage
 
