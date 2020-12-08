@@ -1,7 +1,7 @@
 HOA: v1
 name: "(p1 & F((((p0 & !p2) | (!p0 & p2)) W G!p0) | G(F!p2 & FG(p0 | p2)))) | (!p1 & G((((p0 & p2) | (!p0 & !p2)) M Fp0) & F((!p2 M !p0) | Gp2)))"
 States: 8
-Start: 0 /* comment */
+Start: 0 /* COMMENT */
 AP: 3 "p2" "p0" "p1"
 acc-name: generalized-Buchi 3
 Acceptance: 3 Inf(0)&Inf(1)&Inf(2)
