@@ -1,32 +1,52 @@
-module parser.loader;
+module dhoafparser.loader;
 
-import pegged.grammar;
+import dhoafparser.hoa;
 
 import std.array;
 import std.conv : to;
 
-/**
- * Global HOA definition (waiting for Pegged external actions...)
- */
-template immutableHOA(alias h)
+immutable(HOA) loadHOA(immutable string hoabuf, immutable bool verbose) @trusted
 {
-    auto immutableHOA() {
-        immutable hoa = HOA(h);
-        destroy(h);
-        return hoa;
-    }
-}
+    auto pt = HOAFormat(hoabuf);
 
-struct HOA {
-    immutable HOALoader hoa;
-    alias hoa this;
-    this(HOALoader h) { hoa = cast(immutable(HOALoader))h; }
+    if(verbose) {
+        import std.stdio;
+        writeln("--- BEGIN PARSE TREE ---");
+        writeln(pt);
+        writeln("--- END PARSE TREE ---");
+    }
+
+    HOALoader hoaLoader;
+    traverse!hoaLoader(pt);
+
+    // generate an immutable HOA struct
+    template immutableHOA(alias h)
+    {
+        auto immutableHOA(immutable bool succ) {
+            immutable hoa = HOA(h, succ);
+            destroy(h);
+            return hoa;
+        }
+    }
+    typeof(return) hoa = immutableHOA!hoaLoader(pt.successful);
+
+    return hoa;
 }
 
 /**
  * HOA data structs.
  */
-HOALoader hoaLoader; // TODO global == ugly, fix
+struct HOA {
+    immutable HOALoader hoa;
+    immutable bool valid;
+    alias hoa this;
+
+    this(HOALoader h, bool succ) @trusted
+    {
+        hoa = cast(immutable(HOALoader))h;
+        valid = succ;
+    }
+}
 
 struct State {
     uint id;
@@ -108,7 +128,8 @@ struct HOALoader {
         return stateBuf.data();
     }
 
-    void start(immutable uint id) @safe { // TODO ugly solution but startBuf is supposed to be small
+    void start(immutable uint id) @safe {
+        import std.stdio;
         foreach(State s; startBuf.data()) {
             if(s.id == id) return;
         }

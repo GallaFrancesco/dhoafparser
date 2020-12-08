@@ -1,43 +1,52 @@
-import parser.hoa;
-import parser.loader;
+import dhoafparser.loader;
 
 import std.stdio;
 import std.file;
 import std.range;
 import std.algorithm.searching;
 import std.conv : to;
+import std.getopt;
 
-int main(immutable string[] args)
+int main(string[] args)
 {
-    if(args.length < 2) {
-        writeln("USAGE: dhoafparser [file.hoaf] [-v|--verbose]");
-        writeln("    -v | --verbose    Dump parse tree");
+    bool verbose;
+    string hoaFile;
+    string hoaString;
+
+    auto helpInformation = getopt(
+                    args,
+                    "hoaFile|f", "Filename of a HOA file", &hoaFile,
+                    "hoaString|s", "String representation of a HOA", &hoaString,
+                    "verbose|v", "Dump parse tree", &verbose);
+
+    if (helpInformation.helpWanted ||
+        (!hoaFile.empty && !hoaString.empty))
+    {
+        defaultGetoptPrinter("Parse and validate a HOA automaton.",
+                            helpInformation.options);
         return 0;
     }
 
-    auto pt = HOAFormat(readText(args[1]));
+    string hoaBuf;
+    (hoaFile.empty) ?
+        (hoaBuf = hoaString) :
+        (hoaBuf = readText(hoaFile));
 
-    if(!args.find("-v").empty || !args.find("--verbose").empty) {
-        writeln("--- BEGIN PARSE TREE ---");
-        writeln(pt);
-        writeln("--- END PARSE TREE ---");
+    immutable hoa = loadHOA(hoaBuf, verbose);
+    (hoa.valid) ?
+        writeln("This is a valid Hanoi-Omega automaton.") :
+        writeln("This is NOT a valid Hanoi-Omega automaton.");
+
+    // hoa.nAP = 0; // should fail at compile time
+    if(verbose) {
+        writeln("--- DUMP ---");
+        writeln("N. of states: "~to!string(hoa.nStates));
+        writeln("N. of atomic propositions: "~to!string(hoa.nAP));
+        writeln("Initial state list: "~to!string(hoa.startSet));
+        writeln("Edge list (FORMAT from -> to [label] {accepting sets})");
+        foreach(edge; hoa.edges) edge.dump();
+        writeln("--- END ---");
     }
 
-    (pt.successful) ?
-        writeln(args[1]~": is a valid Hanoi-Omega automaton.") :
-        writeln(args[1]~": is NOT a valid Hanoi-Omega automaton.");
-
-    // generate an immutable HOA struct
-    immutable hoa = immutableHOA!hoaLoader;
-    // hoa.nAP = 0; // should fail
-    writeln("--- DUMP ---");
-    writeln("N. of states: "~to!string(hoa.nStates));
-    writeln("N. of atomic propositions: "~to!string(hoa.nAP));
-    writeln("Initial state list: "~to!string(hoa.startSet));
-    writeln("Edge list (FORMAT from -> to [label] {accepting sets})");
-    foreach(edge; hoa.edges) edge.dump();
-    writeln("--- END ---");
-
-
-    return !pt.successful;
+    return !hoa.valid;
 }
