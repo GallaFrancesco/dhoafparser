@@ -4,12 +4,20 @@ A parser for the Hanoi Omega-Automata format. `dhoafparser` grammar is
 written as a PEG, thanks to the
 [pegged](https://github.com/PhilippeSigaud/Pegged) library.
 
-At the moment the parser is compiled into a command line tool which
+The parser can be compiled into a command line tool which
 reads a file containing the HOA representation of an automaton. The
 program validates the file and optionally prints the whole parse tree.
 
-The final design of this parser is to be built as a library which
-allows for automata inspection providing an `immutable HOA` data structure.
+Alternatively, the parser can be used as a library by including the `source/dhoaparser/`
+directory.
+
+## Design
+
+Build a parser for the Hanoi Omega-Automata format which returns a
+data structure representing a given HOA. `struct HOA` must:
+- be `immutable` once constructed;
+- allow further encoding by providing range-like access to the body of
+  the automaton, represented as a list of edges.
 
 ## Building and Usage
 
