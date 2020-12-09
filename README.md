@@ -30,11 +30,13 @@ git clone https://github.com/gallafrancesco/dhoafparser.git
 cd dhoafparser
 dub build
 ```
-Test the command line tool on the provided example automaton (optionally, use -v to print the whole parse tree).
+Test the command line tool on the provided example automaton (optionally, use -v to print the whole parse tree and -d to dump the generated data structure).
 
 ```
-./dhoafparser example.hoaf -v
+./dhoafparser -f example-tgba.hoaf -v -d
 ```
+
+See `./dhoafparser --help` for more.
 
 ## References
 
