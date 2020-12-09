@@ -5,7 +5,7 @@ import dhoafparser.hoa;
 import std.array;
 import std.conv : to;
 
-immutable(HOA) loadHOA(immutable string hoabuf, immutable bool verbose) @trusted
+auto parseHOA(immutable string hoabuf, immutable bool verbose) @trusted
 {
     auto pt = HOAFormat(hoabuf);
 
@@ -16,13 +16,20 @@ immutable(HOA) loadHOA(immutable string hoabuf, immutable bool verbose) @trusted
         writeln("--- END PARSE TREE ---");
     }
 
+    return pt;
+}
+
+immutable(HOA) loadHOA(immutable string hoabuf, immutable bool verbose) @safe
+{
+    auto pt = parseHOA(hoabuf, verbose);
+
     HOALoader hoaLoader;
-    traverse!hoaLoader(pt);
+    pt.traverse!hoaLoader();
 
     // generate an immutable HOA struct
     template immutableHOA(alias h)
     {
-        auto immutableHOA(immutable bool succ) {
+        auto immutableHOA(immutable bool succ) @safe {
             immutable hoa = HOA(h, succ);
             destroy(h);
             return hoa;
@@ -48,15 +55,12 @@ struct HOA {
     }
 }
 
-struct State {
-    uint id;
-    alias id this;
+enum Acceptance {
+    TGBA,
+    SGBA
 }
 
-struct Edge {
-    State start;
-    State end;
-    string label;
+immutable string MaccSets = `
     private uint[] _accSets;
 
     void addAccSets(uint[] as) @safe
@@ -68,10 +72,15 @@ struct Edge {
     {
         return _accSets.idup();
     }
+`;
 
-    void dump() inout @safe
+struct State {
+    uint id;
+    alias id this;
+    mixin(MaccSets);
+
+    immutable string dump() inout @safe
     {
-        import std.stdio;
         string asb;
         if(accSets.length > 0) {
             asb = " {";
@@ -81,7 +90,28 @@ struct Edge {
             asb ~= "\b\b";
             asb ~= "}";
         }
-        writeln(to!string(start.id) ~ "->" ~ to!string(end.id) ~ " " ~ label ~ " " ~asb);
+        return to!string(id) ~ asb;
+    }
+}
+
+struct Edge {
+    State start;
+    State end;
+    string label;
+    mixin(MaccSets);
+
+    immutable string dump() inout @safe
+    {
+        string asb;
+        if(accSets.length > 0) {
+            asb = " {";
+            foreach(as; accSets) {
+                asb ~= to!string(as) ~ ", ";
+            }
+            asb ~= "\b\b";
+            asb ~= "}";
+        }
+        return start.dump() ~ "->" ~ end.dump() ~ " " ~ label ~ " " ~asb;
     }
 }
 
@@ -103,6 +133,7 @@ struct HOALoader {
     uint nAccSets;
     string acceptanceString;
     string toolString;
+    Acceptance acceptance;
 
     void atomicProposition(immutable string aprop) @safe {
         APbuf.put(aprop);
@@ -129,9 +160,8 @@ struct HOALoader {
     }
 
     void start(immutable uint id) @safe {
-        import std.stdio;
-        foreach(State s; startBuf.data()) {
-            if(s.id == id) return;
+        foreach(uint sid; startBuf.data()) {
+            if(sid == id) return;
         }
         startBuf.put(State(id));
     }
@@ -144,6 +174,14 @@ struct HOALoader {
         return edgeBuf.data();
     }
 
+    void TGBA() @safe {
+        acceptance = Acceptance.TGBA;
+    }
+
+    void SGBA() @safe {
+        acceptance = Acceptance.SGBA;
+    }
+
     /**
      * Edge-building utilities
      */
@@ -154,8 +192,13 @@ struct HOALoader {
 
     void addEdge() @safe
     {
-        currentEdge.addAccSets(accSetBuf.data.dup());
+        if(acceptance == Acceptance.TGBA) {
+            currentEdge.addAccSets(accSetBuf.data.dup());
+            accSetBuf.clear();
+        } else if(acceptance == Acceptance.SGBA) {
+            currentEdge.start.addAccSets(accSetBuf.data.dup());
+            accSetBuf.clear();
+        }
         edgeBuf.put(currentEdge);
-        accSetBuf.clear();
     }
 }

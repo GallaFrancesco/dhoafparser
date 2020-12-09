@@ -1,10 +1,12 @@
 module dhoafparser.hoa;
 
 import pegged.grammar;
-import std.conv : to;
-import std.stdio;
 
-void traverse(alias hoaLoader)(ParseTree p) @trusted
+import std.range;
+import std.conv : to;
+import std.algorithm.searching : find;
+
+void traverse(alias hoaLoader)(ParseTree p) @safe
 {
     switch(p.name) {
     case "HOAFormat.NSTATES":
@@ -28,8 +30,11 @@ void traverse(alias hoaLoader)(ParseTree p) @trusted
     case "HOAFormat.edgeLabelExpr":
         currentEdgeLabel!hoaLoader(p);
         break;
-    case "HOAFormat.edge":
+    case "HOAFormat.EDGE_EOL":
         addEdge!hoaLoader(p);
+        break;
+    case "HOAFormat.PROP_ID":
+        setAcceptanceGBA!hoaLoader(p);
         break;
     default:
         break;
@@ -62,12 +67,12 @@ HOAFormat:
                     / "acc-name:" IDENTIFIER ( BOOLEAN / INT / IDENTIFIER )* endOfLine*
                     / "tool:" STRING STRING? endOfLine* 
                     / "name:" STRING endOfLine*
-                    / "properties:" IDENTIFIER* endOfLine*
+                    / "properties:" PROP_ID* endOfLine*
                     / HEADERNAME ( BOOLEAN / INT / STRING / IDENTIFIER )* endOfLine*
 
     stateName      <  "State:" label? CURRENTSTATE STRING? accSig? endOfLine*
 
-    edge           <  edgeLabel ENDSTATE accSig? { } endOfLine*
+    edge           <  edgeLabel ENDSTATE accSig? { } EDGE_EOL*
 
     label          <  "[" labelExpr "]"
     edgeLabel      <  "[" edgeLabelExpr "]"
@@ -96,21 +101,24 @@ HOAFormat:
     HEADERNAME     <~ identifier ":"
   
     ANAME          <~ "@" identifier
-   
+
+    PROP_ID        <~ IDENTIFIER
+
     IDENTIFIER     <~ [a-zA-Z_] [a-zA-Z_0-9-]*
 
     BOOLEAN        <~ TT / FF
 
     COMMENT        <- CommStart (!CommEnd .)* CommEnd
 
-    NSTATES        <~ INT
+    NSTATES        <  INT
     NAP            <  INT
     ACCSET         <  INT
-    CURRENTSTATE   <~ INT
+    CURRENTSTATE   <  INT
     ENDSTATE       <  INT
     STARTSTATE     <  INT
-
     INT            <~ digit+
+
+    EDGE_EOL       <~ endOfLine
 
     STRING         <~ doublequote (DQChar)* doublequote
 
@@ -166,7 +174,7 @@ ParseTree nAP(alias hoaLoader)(ParseTree p) @safe
 ParseTree currentState(alias hoaLoader)(ParseTree p) @safe
 {
     assert(p.matches.length == 1);
-    hoaLoader.currentEdge.start = State(to!uint(p.matches[0]));
+    hoaLoader.currentEdge.start.id = to!uint(p.matches[0]);
     return p;
 }
 
@@ -179,7 +187,7 @@ ParseTree currentEdgeLabel(alias hoaLoader)(ParseTree p) @safe
 ParseTree edgeFinalState(alias hoaLoader)(ParseTree p) @safe
 {
     assert(p.matches.length == 1);
-    hoaLoader.currentEdge.end = State(to!uint(p.matches[0]));
+    hoaLoader.currentEdge.end.id = to!uint(p.matches[0]);
     return p;
 }
 
@@ -196,3 +204,18 @@ ParseTree addEdge(alias hoaLoader)(ParseTree p) @safe
     return p;
 }
 
+ParseTree setAcceptanceGBA(alias hoaLoader)(ParseTree p) @safe
+{
+    import std.stdio;
+    switch(p.matches[0]) {
+    case "state-acc":
+        hoaLoader.SGBA();
+        break;
+    case "trans-acc":
+        hoaLoader.TGBA();
+        break;
+    default:
+        break;
+    }
+    return p;
+}
