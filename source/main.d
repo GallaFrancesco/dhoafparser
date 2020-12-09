@@ -20,10 +20,13 @@ int main(string[] args)
                     "verbose|v", "Dump parse tree", &verbose);
 
     if (helpInformation.helpWanted ||
-        (!hoaFile.empty && !hoaString.empty))
+        (!hoaFile.empty && !hoaString.empty) ||
+        (hoaFile.empty && hoaString.empty))
     {
-        defaultGetoptPrinter("Parse and validate a HOA automaton.",
-                            helpInformation.options);
+        defaultGetoptPrinter(`---
+dhoafparser - version 0.1 - Parse and validate a HOA automaton.
+Usage: dhoafparser [-f hoaFile | -s hoaString ] [options...]
+---`, helpInformation.options);
         return 0;
     }
 
